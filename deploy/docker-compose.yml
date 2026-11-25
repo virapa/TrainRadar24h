@@ -1,0 +1,33 @@
+# Despliegue con las imágenes publicadas en GitHub Container Registry, sin código fuente.
+#
+#   mkdir trainradar24h && cd trainradar24h
+#   curl -fsSLO https://raw.githubusercontent.com/virapa/TrainRadar24h/main/deploy/docker-compose.yml
+#   docker compose up -d
+#
+# Versión: TRAINRADAR_VERSION=0.1.0 docker compose up -d (por defecto, "latest").
+services:
+  api:
+    image: ghcr.io/virapa/trainradar24h-api:${TRAINRADAR_VERSION:-latest}
+    restart: unless-stopped
+    environment:
+      VAPID_PRIVATE_KEY: /data/vapid_private.pem
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-}
+    ports:
+      - "${API_PORT:-8090}:8000"
+    volumes:
+      - ./data:/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/api/health').status == 200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 120s
+
+  web:
+    image: ghcr.io/virapa/trainradar24h-web:${TRAINRADAR_VERSION:-latest}
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "${WEB_PORT:-8091}:80"

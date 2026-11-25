@@ -1,0 +1,27 @@
+services:
+  api:
+    build: ./api
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      VAPID_PRIVATE_KEY: /data/vapid_private.pem
+    ports:
+      # Puerto del equipo configurable: el 8000 suele estar ocupado por otros proyectos.
+      - "${API_PORT:-8090}:8000"
+    volumes:
+      - ./data:/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/api/health').status == 200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 120s
+
+  web:
+    build: ./web
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      # Puerto del equipo configurable: el 8080 suele estar ocupado por otros proyectos.
+      - "${WEB_PORT:-8091}:80"
